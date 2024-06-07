@@ -81,10 +81,21 @@ module.exports = {
 
         let votes = {};
         let notifiedUsers = new Set();
+        let votingActive = true;
+
+        const sendReminder = async () => {
+            if (votingActive) {
+                await channel.send(`${role ? role.toString() : '@everyone'} por favor recuerden votar.`);
+            }
+        };
+
+        const reminderInterval = setInterval(sendReminder, 24 * 60 * 60 * 1000);
 
         const checkCompleteVotes = async () => {
             if (Object.keys(votes).length === totalEligible) {
                 await handleButtonPress({ customId: 'complete', user: organizer }, organizer, votes, notifiedUsers, row, buttonRow, timestampOptions, initialTimestampOptions, channel, voteMessage, collector, role);
+                votingActive = false;
+                clearInterval(reminderInterval);
             }
         };
 
@@ -94,8 +105,11 @@ module.exports = {
                 await checkCompleteVotes();
             } else if (i.isButton()) {
                 await handleButtonPress(i, organizer, votes, notifiedUsers, row, buttonRow, timestampOptions, initialTimestampOptions, channel, voteMessage, collector, role);
+                if (i.customId === 'complete') {
+                    votingActive = false;
+                    clearInterval(reminderInterval);
+                }
             }
         });
-        interaction.followUp({content :'Votación de partida de rol creada correctamente.', ephemeral : true});
     }
 };

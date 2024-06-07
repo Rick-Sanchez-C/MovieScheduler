@@ -9,6 +9,7 @@ function createTimestamps(Hours = config.default_times, Days = ['sábado', 'domi
     // Comprobación de los argumentos
     Hours = Hours==null?config.default_times:Hours;
     Days = Days==null?config.default_days:Days;
+    TimeZone = TimeZone==null?config.time_zone:TimeZone;
     if (!Array.isArray(Hours) || !Hours.every(hour => /^([01]\d|2[0-3]):([0-5]\d)$/.test(hour))) {
         throw new Error('Hours debe ser un array de strings en formato HH:MM');
     }

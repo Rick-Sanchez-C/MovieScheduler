@@ -1,5 +1,5 @@
 {
   "default_times" : ["17:00", "18:00", "19:00"],
   "default_days" : ["Saturday", "Sunday"],
-  "time_zone" : "America/New_York"
+  "time_zone" : "Europe/Madrid"
 }

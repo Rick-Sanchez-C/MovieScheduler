@@ -1,5 +1,6 @@
 {
   "default_times" : ["17:00", "18:00", "19:00"],
   "default_days" : ["Saturday", "Sunday"],
-  "time_zone" : "Europe/Madrid"
+  "time_zone" : "Europe/Madrid",
+  "guild" : "1184208999969722398"
 }

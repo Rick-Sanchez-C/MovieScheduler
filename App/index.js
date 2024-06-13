@@ -1,12 +1,21 @@
 const fs = require('fs');
 const path = require('path');
-const { Client, Collection, GatewayIntentBits, REST } = require('discord.js');
+const { Client, Collection, GatewayIntentBits, REST , IntentsBitField} = require('discord.js');
 const { Routes } = require('discord-api-types/v9');
 require('dotenv').config(); // Cargar variables de entorno desde .env
-
+//load config
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../config.json'), 'utf8'));
+const guildid = config.guild
 const token = process.env.DISCORD_TOKEN; // Obtener el token desde las variables de entorno
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages] });
+const client = new Client({
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.MessageContent
+    ]
+});
 
 client.commands = new Collection();
 const commandsPath = path.join(__dirname, 'commands');
@@ -26,6 +35,7 @@ const rest = new REST({ version: '9' }).setToken(token);
 client.once('ready', () => {
     console.log(`Logged in as ${client.user.tag}!`);
 
+
     // Registering commands globally once the bot is ready
     (async () => {
         try {
@@ -40,6 +50,10 @@ client.once('ready', () => {
         } catch (error) {
             console.error(error);
         }
+        const guild = client.guilds.cache.get(guildid);
+        await guild.members.fetch();
+
+        console.log(`Loaded ${guild.memberCount} members`);
     })();
 });
 

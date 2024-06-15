@@ -58,4 +58,4 @@ jobs:
         git commit -m "Increment version to 2.0.${{ steps.increment_version.outputs.new_version }}"
         git push
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.TOKEN_GITHUB }}

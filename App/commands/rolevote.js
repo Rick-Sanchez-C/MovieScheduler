@@ -2,6 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { createTimestamps, formatTimestamp } = require('../utils');
 const { handleSelectMenu, handleButtonPress, updateVoteMessage } = require('../handlers/voteHandlers');
+const { createGuildEvent } = require('../utils/EventCreator'); // Import the createGuildEvent function
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -10,6 +11,10 @@ module.exports = {
         .addUserOption(option =>
             option.setName('organizer')
                 .setDescription('Organizador de la votación')
+                .setRequired(true))
+        .addChannelOption(option =>
+            option.setName('voice_channel')
+                .setDescription('Canal de voz para la partida')
                 .setRequired(true))
         .addStringOption(option =>
             option.setName('days')
@@ -34,6 +39,11 @@ module.exports = {
         const role = interaction.options.getRole('role');
         const forceNextWeek = interaction.options.getBoolean('force_next_week') || false;
         const channel = interaction.channel;
+        const voicechannel = interaction.options.getChannel('voice_channel');
+        //2 = voice channel
+        if (!(voicechannel.type === 2)) {
+            return await interaction.reply('Por favor, selecciona un canal de voz.');
+        }
 
         const timestamps = createTimestamps(hours, days, forceNextWeek);
 
@@ -108,6 +118,31 @@ module.exports = {
                 if (i.customId === 'complete') {
                     votingActive = false;
                     clearInterval(reminderInterval);
+
+                    // Crear evento de guild cuando la votación se complete
+                    const voteCounts = {};
+                    for (const userVotes of Object.values(votes)) {
+                        for (const vote of userVotes) {
+                            if (!voteCounts[vote]) {
+                                voteCounts[vote] = 0;
+                            }
+                            voteCounts[vote]++;
+                        }
+                    }
+                    if (Object.keys(voteCounts).length === 0) {
+                        //Use the first timestamp option as the default time
+                        const defaultTime = initialTimestampOptions[0].value;
+                        //Add the organizer's vote to the vote counts
+                        voteCounts[defaultTime] = 1;
+                    }
+
+                    const rolename = role ? role.name : 'todos';
+                    const roletag = role ? role.tag : '@everyone';
+                    const mostVotedTime = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0];
+                    const startTime = new Date(mostVotedTime[0] * 1000); // Convertir el timestamp a Date
+                    const eventName = 'Partida de Rol Para '+rolename;
+                    const eventDescription = `Partida de rol organizada por ${organizer.tag} para ${roletag} en ${startTime.toLocaleString()}`;
+                    await createGuildEvent(interaction.guild, eventName, eventDescription, startTime, organizer,voicechannel);
                 }
             }
         });

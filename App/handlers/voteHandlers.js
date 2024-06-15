@@ -61,11 +61,13 @@ async function handleButtonPress(i, organizer, votes, notifiedUsers, row, button
         }
 
         if (Object.keys(voteCounts).length === 0) {
-            await channel.send('Aún no ha habido votaciones.');
-        } else {
-            const mostVotedTime = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0];
-            await channel.send(`La hora con más votos es: ${formatTimestamp(mostVotedTime[0])} con ${mostVotedTime[1]} votos.`);
+            //Use the first timestamp option as the default time
+            const defaultTime = initialTimestampOptions[0].value;
+            //Add the organizer's vote to the vote counts
+            voteCounts[defaultTime] = 1;
         }
+        const mostVotedTime = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0];
+        await channel.send(`La hora con más votos es: ${formatTimestamp(mostVotedTime[0])} con ${mostVotedTime[1]} votos.`);
         collector.stop();
     } else if (i.customId === 'cannot_play') {
         await organizer.send(`${i.user.tag} no puede jugar.`);

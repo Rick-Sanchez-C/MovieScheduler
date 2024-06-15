@@ -137,11 +137,10 @@ module.exports = {
                     }
 
                     const rolename = role ? role.name : 'todos';
-                    const roletag = role ? role.tag : '@everyone';
                     const mostVotedTime = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0];
                     const startTime = new Date(mostVotedTime[0] * 1000); // Convertir el timestamp a Date
                     const eventName = 'Partida de Rol Para '+rolename;
-                    const eventDescription = `Partida de rol organizada por ${organizer.tag} para ${roletag} en ${startTime.toLocaleString()}`;
+                    const eventDescription = `Partida de rol organizada por ${organizer.tag} en ${startTime.toLocaleString()}`;
                     await createGuildEvent(interaction.guild, eventName, eventDescription, startTime, organizer,voicechannel);
                 }
             }

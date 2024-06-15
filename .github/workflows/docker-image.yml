@@ -21,15 +21,6 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Check if the last commit was by GitHub Actions
-        id: check_last_commit
-        run: |
-          git log -1 --pretty=format:'%an' > author.txt
-          author=$(cat author.txt)
-          if [ "$author" = "github-actions[bot]" ]; then
-            echo "Commit made by GitHub Actions bot, skipping the workflow."
-            exit 0
-
       - name: Read version
         id: read_version
         run: |

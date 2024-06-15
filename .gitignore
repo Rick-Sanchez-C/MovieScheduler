@@ -2,3 +2,4 @@
 /.idea/
 publish.sh
 .env
+/versioning/*

@@ -1,5 +1,7 @@
 # RolScheduler2
 
+Version: v2.0.6-0
+
 ## Introduction
 RolScheduler2 is a project aimed at providing a scheduling solution for role-based access control. It is designed to streamline and automate the process of assigning roles and permissions within an organization.
 

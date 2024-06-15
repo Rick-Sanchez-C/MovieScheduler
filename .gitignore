@@ -3,3 +3,5 @@
 publish.sh
 .env
 /versioning/*
+versioning.cfg
+README.MD--

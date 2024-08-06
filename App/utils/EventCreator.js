@@ -1,6 +1,6 @@
 const { GuildScheduledEventPrivacyLevel, GuildScheduledEventEntityType } = require('discord.js');
 
-async function createGuildEvent(guild, name, description, startTime, organizer, voicechannel) {
+async function createGuildEvent(guild, name, description, startTime, organizer, voiceChannel) {
     try {
         const event = await guild.scheduledEvents.create({
             name,
@@ -8,14 +8,15 @@ async function createGuildEvent(guild, name, description, startTime, organizer, 
             privacyLevel: GuildScheduledEventPrivacyLevel.GuildOnly,
             entityType: GuildScheduledEventEntityType.Voice,
             description,
-            voiceChannelId: voicechannel.id,
-            channel: voicechannel // Adjust the logic to find the appropriate channel
+            channel: voiceChannel // Correctly reference the voice channel
         });
 
-        await organizer.send(`Evento de guild creado: ${event.url}`);
+        await organizer.send(`Guild event created: ${event.url}`);
+        return event; // Ensure the event object is returned
     } catch (error) {
         console.error('Error creating guild event:', error);
-        await organizer.send('Hubo un error al crear el evento de guild.');
+        await organizer.send('There was an error creating the guild event.');
+        return null; // Return null in case of error
     }
 }
 

@@ -1,14 +1,15 @@
 const { ActionRowBuilder, StringSelectMenuBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { formatTimestamp } = require('../utils');
+const { createGuildEvent } = require('../utils/EventCreator'); // Import the createGuildEvent function
 
-async function handleSelectMenu(i, organizer, votes, notifiedUsers, row, buttonRow, timestampOptions, initialTimestampOptions, role, voteMessage) {
+async function handleSelectMenu(i, organizer, votes, row, buttonRow, timestampOptions, initialTimestampOptions, voteMessage) {
     if (i.user.id === organizer.id) {
         const selectedTimes = new Set(i.values);
         timestampOptions = timestampOptions.filter(option => selectedTimes.has(option.value));
         row = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId('select_time')
-                .setPlaceholder('Selecciona las horas disponibles')
+                .setPlaceholder('Select available times')
                 .setMinValues(1)
                 .setMaxValues(timestampOptions.length)
                 .addOptions(timestampOptions)
@@ -24,32 +25,30 @@ async function handleSelectMenu(i, organizer, votes, notifiedUsers, row, buttonR
 
         votes[userId] = selectedTimes;
 
-        if (!notifiedUsers.has(userId)) {
-            await organizer.send(`${i.user.tag} ha votado.`);
-            notifiedUsers.add(userId);
-        }
-
         await i.deferUpdate();
-        await updateVoteMessage(voteMessage, row, buttonRow, votes, initialTimestampOptions, role);
+        await updateVoteMessage(voteMessage, row, buttonRow, votes, initialTimestampOptions);
     }
 }
 
-async function handleButtonPress(i, organizer, votes, notifiedUsers, row, buttonRow, timestampOptions, initialTimestampOptions, channel, voteMessage, collector, role) {
+let eventCreated = false;
+
+async function handleButtonPress(i, organizer, votes, row, buttonRow, timestampOptions, initialTimestampOptions, channel, voteMessage, collector, interaction) {
     if (i.customId === 'reset' && i.user.id === organizer.id) {
         votes = {};
-        notifiedUsers.clear();
         timestampOptions = [...initialTimestampOptions];
         row = new ActionRowBuilder().addComponents(
             new StringSelectMenuBuilder()
                 .setCustomId('select_time')
-                .setPlaceholder('Selecciona las horas disponibles')
+                .setPlaceholder('Select available times')
                 .setMinValues(1)
                 .setMaxValues(timestampOptions.length)
                 .addOptions(timestampOptions)
         );
         await i.update({ components: [row, buttonRow] });
-        await updateVoteMessage(voteMessage, row, buttonRow, votes, initialTimestampOptions, role);
-    } else if (i.customId === 'complete' && i.user.id === organizer.id) {
+        await updateVoteMessage(voteMessage, row, buttonRow, votes, initialTimestampOptions);
+    } else if (i.customId === 'complete' && i.user.id === organizer.id && !eventCreated) {
+        eventCreated = true; // Ensure the event is created only once
+
         const voteCounts = {};
         for (const userVotes of Object.values(votes)) {
             for (const vote of userVotes) {
@@ -61,24 +60,38 @@ async function handleButtonPress(i, organizer, votes, notifiedUsers, row, button
         }
 
         if (Object.keys(voteCounts).length === 0) {
-            //Use the first timestamp option as the default time
+            // Use the first timestamp option as the default time
             const defaultTime = initialTimestampOptions[0].value;
-            //Add the organizer's vote to the vote counts
+            // Add the organizer's vote to the vote counts
             voteCounts[defaultTime] = 1;
         }
         const mostVotedTime = Object.entries(voteCounts).sort((a, b) => b[1] - a[1])[0];
-        await channel.send(`La hora con más votos es: ${formatTimestamp(mostVotedTime[0])} con ${mostVotedTime[1]} votos.`);
+        const startTime = new Date(mostVotedTime[0] * 1000); // Convert timestamp to Date
+        const eventName = 'Movie Night';
+        const eventDescription = `Movie night organized by ${organizer.tag} on ${startTime.toLocaleString()}`;
+        const event = await createGuildEvent(interaction.guild, eventName, eventDescription, startTime, organizer, interaction.options.getChannel('voice_channel'));
+
+        if (event) {
+            const eventLink = `https://discord.com/events/${interaction.guild.id}/${event.id}`;
+
+            // Notify the organizer and users who voted for the most voted time
+            const voters = Object.keys(votes).filter(userId => votes[userId].includes(mostVotedTime[0]));
+            const userNotifications = voters.map(userId => `<@${userId}>`).join(', ');
+            await channel.send(`The time with the most votes is: ${formatTimestamp(mostVotedTime[0])} with ${mostVotedTime[1]} votes.\nEvent link: ${eventLink}`);
+            await channel.send(`The following users voted for this time: ${userNotifications}`);
+        } else {
+            await channel.send('There was an error creating the event.');
+        }
         collector.stop();
-    } else if (i.customId === 'cannot_play') {
-        await organizer.send(`${i.user.tag} no puede jugar.`);
+    } else if (i.customId === 'cannot_attend') {
         await i.deferUpdate();
-        await i.followUp({ content: 'El organizador ha sido notificado de que no puedes jugar.', ephemeral: true });
+        await i.followUp({ content: 'The organizer has been notified that you cannot attend.', ephemeral: true });
     } else {
-        await i.reply({ content: 'No tienes permiso para usar este botón.', ephemeral: true });
+        await i.reply({ content: 'You do not have permission to use this button.', ephemeral: true });
     }
 }
 
-async function updateVoteMessage(voteMessage, row, buttonRow, votes, initialTimestampOptions, role) {
+async function updateVoteMessage(voteMessage, row, buttonRow, votes, initialTimestampOptions) {
     const voteCounts = {};
     for (const userVotes of Object.values(votes)) {
         for (const vote of userVotes) {
@@ -90,13 +103,18 @@ async function updateVoteMessage(voteMessage, row, buttonRow, votes, initialTime
     }
 
     const voteStats = Object.entries(voteCounts)
-        .map(([timestamp, count]) => `${formatTimestamp(timestamp)} : ${count} votos`)
+        .map(([timestamp, count]) => `${formatTimestamp(timestamp)} : ${count} votes`)
         .join('\n');
 
-    await voteMessage.edit({
-        content: `Se anuncia partida de rol, elegid a qué hora estáis disponibles. ${role ? role.toString() : '@everyone'}\nEstadísticas de votación:\n${voteStats}`,
-        components: [row, buttonRow]
-    });
+    // Ensure voteMessage is an instance of Message
+    if (voteMessage && typeof voteMessage.edit === 'function') {
+        await voteMessage.edit({
+            content: `Movie night announced, choose your available times. @everyone\nVoting statistics:\n${voteStats}`,
+            components: [row, buttonRow]
+        });
+    } else {
+        console.error('voteMessage is not a valid Message instance.');
+    }
 }
 
 module.exports = {
